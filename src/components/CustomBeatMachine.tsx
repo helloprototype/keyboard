@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Square, Save, Plus, Trash2 } from 'lucide-react';
+import { Play, Pause, Square, Save, Plus, Trash2, Circle, Disc, Zap } from 'lucide-react';
 import { AudioEngine } from '../utils/audioUtils';
 
 interface CustomBeatMachineProps {
@@ -25,9 +25,11 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  // Crash
   ]);
   const [patternName, setPatternName] = useState('');
+  const [hasActivePattern, setHasActivePattern] = useState(false);
 
   const drumSounds = ['kick', 'snare', 'hihat', 'crash'] as const;
   const drumNames = ['Kick', 'Snare', 'Hi-hat', 'Crash'];
+  const drumIcons = [Circle, Square, Disc, Zap];
 
   // Load patterns from localStorage on mount
   useEffect(() => {
@@ -50,14 +52,15 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isPlaying && selectedPattern) {
+    if (isPlaying && (selectedPattern || hasActivePattern)) {
       const beatInterval = (60 / bpm / 4) * 1000; // 16th notes
       interval = setInterval(() => {
         setCurrentBeat((prev) => {
           const nextBeat = (prev + 1) % 16;
           
           // Play sounds for current beat
-          selectedPattern.pattern.forEach((track, trackIndex) => {
+          const patternToPlay = selectedPattern ? selectedPattern.pattern : editingPattern;
+          patternToPlay.forEach((track, trackIndex) => {
             if (track[prev]) {
               audioEngine.playDrumSound(drumSounds[trackIndex]);
             }
@@ -69,7 +72,13 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
     }
 
     return () => clearInterval(interval);
-  }, [isPlaying, bpm, selectedPattern, audioEngine]);
+  }, [isPlaying, bpm, selectedPattern, hasActivePattern, editingPattern, audioEngine]);
+
+  // Check if editing pattern has any active steps
+  useEffect(() => {
+    const hasSteps = editingPattern.some(track => track.some(step => step === 1));
+    setHasActivePattern(hasSteps);
+  }, [editingPattern]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -87,6 +96,12 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
       newPattern[trackIndex][stepIndex] = newPattern[trackIndex][stepIndex] ? 0 : 1;
       return newPattern;
     });
+    
+    // If we're editing and not using a selected pattern, allow playing
+    if (!selectedPattern) {
+      const hasSteps = editingPattern.some(track => track.some(step => step === 1));
+      setHasActivePattern(hasSteps);
+    }
   };
 
   const savePattern = () => {
@@ -135,15 +150,16 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ]);
     setSelectedPattern(null);
+    setHasActivePattern(false);
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-2xl shadow-2xl border border-gray-700">
+    <div className="bg-modal-bg p-6 rounded-2xl shadow-2xl shadow-shadow-dark border border-gray-700">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold text-white">Custom Beat Sequencer</h3>
-        <div className="flex items-center space-x-4">
+        <h3 className="text-2xl font-bold text-text-primary">Custom Beat Sequencer</h3>
+        <div className="flex flex-col items-center space-y-4 md:flex-row md:space-x-4 md:space-y-0">
           <div className="flex items-center space-x-2">
-            <label className="text-white text-sm">BPM:</label>
+            <label className="text-text-primary text-sm">BPM:</label>
             <input
               type="range"
               min="80"
@@ -152,18 +168,18 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
               onChange={(e) => setBpm(Number(e.target.value))}
               className="w-20"
             />
-            <span className="text-white text-sm w-8">{bpm}</span>
+            <span className="text-text-primary text-sm w-8">{bpm}</span>
           </div>
           <button
             onClick={togglePlay}
-            disabled={!selectedPattern}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
+            disabled={!selectedPattern && !hasActivePattern}
+            className="bg-button-primary hover:bg-button-primary/80 disabled:bg-gray-600 disabled:cursor-not-allowed text-black p-2 rounded-lg transition-colors shadow-md shadow-shadow-dark"
           >
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
           <button
             onClick={stopBeat}
-            className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
+            className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors shadow-md shadow-shadow-dark"
           >
             <Square size={20} />
           </button>
@@ -173,24 +189,24 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
       {/* Pattern Editor */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-white text-lg font-semibold">Pattern Editor</h4>
+          <h4 className="text-text-primary text-lg font-semibold">Pattern Editor</h4>
           <div className="flex items-center space-x-2">
             <input
               type="text"
               value={patternName}
               onChange={(e) => setPatternName(e.target.value)}
               placeholder="Pattern name..."
-              className="bg-gray-800 text-white px-3 py-1 rounded text-sm"
+              className="bg-gray-800 text-text-primary px-3 py-1 rounded text-sm shadow-inner shadow-shadow-dark"
             />
             <button
               onClick={savePattern}
-              className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded transition-colors"
+              className="bg-button-primary hover:bg-button-primary/80 text-black p-2 rounded transition-colors shadow-md shadow-shadow-dark"
             >
               <Save size={16} />
             </button>
             <button
               onClick={clearPattern}
-              className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded transition-colors"
+              className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded transition-colors shadow-md shadow-shadow-dark"
             >
               <Plus size={16} />
             </button>
@@ -204,8 +220,8 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
               <div
                 key={i}
                 className={`w-6 h-6 flex items-center justify-center text-xs rounded ${
-                  currentBeat === i ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'
-                }`}
+                  currentBeat === i ? 'bg-accent-yellow text-black' : 'bg-gray-700 text-text-primary/70'
+                } shadow-sm shadow-shadow-dark`}
               >
                 {i + 1}
               </div>
@@ -213,9 +229,13 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
           </div>
 
           {/* Drum tracks */}
-          {drumNames.map((drumName, trackIndex) => (
+          {drumNames.map((drumName, trackIndex) => {
+            const IconComponent = drumIcons[trackIndex];
+            return (
             <div key={drumName} className="flex items-center space-x-1">
-              <div className="w-16 text-white text-sm font-medium">{drumName}</div>
+              <div className="w-10 flex items-center justify-center text-text-primary text-sm font-medium">
+                <IconComponent size={20} />
+              </div>
               <div className="flex space-x-1">
                 {Array.from({ length: 16 }, (_, stepIndex) => (
                   <button
@@ -224,25 +244,25 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
                     className={`w-6 h-6 rounded border transition-all ${
                       editingPattern[trackIndex][stepIndex]
                         ? currentBeat === stepIndex && selectedPattern
-                          ? 'bg-yellow-400 border-yellow-300'
-                          : 'bg-blue-500 border-blue-400'
+                          ? 'bg-accent-yellow border-accent-yellow/80'
+                          : 'bg-primary-bg-mid border-primary-bg-mid/80'
                         : currentBeat === stepIndex && selectedPattern
                         ? 'bg-gray-600 border-gray-400'
                         : 'bg-gray-800 border-gray-600 hover:bg-gray-700'
-                    }`}
+                    } shadow-sm shadow-shadow-dark`}
                   />
                 ))}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
 
       {/* Saved Patterns */}
       <div>
-        <h4 className="text-white text-lg font-semibold mb-4">Saved Patterns</h4>
+        <h4 className="text-text-primary text-lg font-semibold mb-4">Saved Patterns</h4>
         {customPatterns.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">
+          <div className="text-text-primary/70 text-center py-8">
             No saved patterns. Create your first pattern above!
           </div>
         ) : (
@@ -252,9 +272,9 @@ const CustomBeatMachine: React.FC<CustomBeatMachineProps> = ({ audioEngine }) =>
                 key={pattern.id}
                 className={`p-3 rounded-lg border transition-all cursor-pointer ${
                   selectedPattern?.id === pattern.id
-                    ? 'bg-blue-600 border-blue-400 text-white'
-                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
-                }`}
+                    ? 'bg-primary-bg-mid border-primary-bg-mid/80 text-text-primary'
+                    : 'bg-gray-800 border-gray-600 text-text-primary/70 hover:bg-gray-700'
+                } shadow-md shadow-shadow-dark`}
                 onClick={() => loadPattern(pattern)}
               >
                 <div className="flex items-center justify-between">

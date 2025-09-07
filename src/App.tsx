@@ -6,7 +6,9 @@ import SamplePads from './components/SamplePads';
 import CustomBeatMachine from './components/CustomBeatMachine';
 import CircleOfFifths from './components/CircleOfFifths';
 import Controls from './components/Controls';
+import ChordInfo from './components/ChordInfo';
 import { AudioEngine } from './utils/audioUtils';
+import { keyInfo, isNoteDiatonic } from './utils/musicTheoryUtils';
 
 function App() {
   const [octaveShift, setOctaveShift] = useState(0);
@@ -17,6 +19,8 @@ function App() {
   const [isCircleSpinning, setIsCircleSpinning] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [activeTab, setActiveTab] = useState<'preset' | 'custom' | 'sampler'>('preset');
+  const [lastPressedNote, setLastPressedNote] = useState<string>('');
+  const [contentReady, setContentReady] = useState(false);
   
   const audioEngineRef = useRef<AudioEngine | null>(null);
 
@@ -26,6 +30,10 @@ function App() {
     // Hide welcome after 3 seconds
     const timer = setTimeout(() => {
       setShowWelcome(false);
+      // Add slight delay for content animation
+      setTimeout(() => {
+        setContentReady(true);
+      }, 200);
     }, 3000);
     
     return () => clearTimeout(timer);
@@ -34,12 +42,17 @@ function App() {
   const handleKeyPress = (note: string, octave: number) => {
     if (audioEngineRef.current && !isMuted) {
       audioEngineRef.current.playNote(note, octave);
+      setLastPressedNote(note);
     }
   };
 
   const handleChordPress = (chord: Array<{note: string, octave: number}>) => {
     if (audioEngineRef.current && !isMuted) {
       audioEngineRef.current.playChord(chord);
+      // Set the root note of the chord as the last pressed note
+      if (chord.length > 0) {
+        setLastPressedNote(chord[0].note);
+      }
     }
   };
 
@@ -64,19 +77,23 @@ function App() {
     setChordMode(!chordMode);
   };
 
+  // Check if the last pressed note is diatonic to the selected key
+  const isNonDiatonic = lastPressedNote && selectedKey && !isNoteDiatonic(lastPressedNote, selectedKey);
   if (showWelcome) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-bg-start via-primary-bg-mid to-primary-bg-end flex items-center justify-center font-roboto">
         <div className="text-center animate-pulse">
-          <Piano className="w-24 h-24 text-white mx-auto mb-4 animate-bounce" />
-          <h1 className="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+          <Piano className="w-24 h-24 text-text-primary mx-auto mb-4 animate-bounce" />
+          <h1 className="text-6xl font-bold text-text-primary mb-4 bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent">
+          </h1>
+          <h1 className="text-6xl font-bold text-text-primary mb-4 bg-gradient-to-r from-text-primary to-white bg-clip-text text-transparent">
             Piano Master
           </h1>
-          <p className="text-xl text-purple-200">Loading your musical experience...</p>
+          <p className="text-xl text-text-primary/80">Loading your musical experience...</p>
           <div className="flex items-center justify-center mt-8 space-x-4">
-            <div className="w-3 h-3 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="w-3 h-3 bg-accent-yellow rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-3 h-3 bg-primary-bg-mid rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-3 h-3 bg-accent-orange rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
       </div>
@@ -84,19 +101,19 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900">
+    <div className={`min-h-screen bg-gradient-to-br from-primary-bg-start via-primary-bg-mid to-primary-bg-end font-roboto text-text-primary ${
+      contentReady ? 'animate-fadeInScale' : 'opacity-0'
+    }`}>
       {/* Header */}
-      <header className="bg-black/30 backdrop-blur-lg border-b border-white/10 p-4">
+      <header className="bg-modal-bg backdrop-blur-lg border-b border-white/10 p-4 shadow-lg shadow-shadow-dark">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Piano className="w-8 h-8 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Piano Master Studio
+            <Piano className="w-8 h-8 text-primary-bg-mid" />
+            <h1 className="text-2xl md:text-3xl font-bold text-text-primary bg-gradient-to-r from-primary-bg-mid to-accent-yellow bg-clip-text text-transparent">
             </h1>
-          </div>
-          <div className="flex items-center space-x-2 text-purple-200">
-            <Music className="w-5 h-5" />
-            <span className="text-sm">Professional Music Creation Suite</span>
+            <h1 className="text-2xl md:text-3xl font-bold text-text-primary bg-gradient-to-r from-primary-bg-mid to-text-primary bg-clip-text text-transparent">
+              MATILDA Music Theory
+            </h1>
           </div>
         </div>
       </header>
@@ -115,65 +132,119 @@ function App() {
         />
 
         {/* Main Piano */}
-        <div className="flex flex-col items-center space-y-4">
-          <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+        <div className="flex flex-col items-center space-y-4 overflow-x-auto">
+          <h2 className="text-2xl font-bold text-text-primary flex items-center space-x-2">
             <Piano className="w-6 h-6" />
-            <span>49-Key Professional Piano</span>
+            <span className="hidden md:inline">25-Key Piano</span>
+            <span className="md:hidden">Piano</span>
           </h2>
           <PianoKeyboard 
             onKeyPress={handleKeyPress} 
             onChordPress={handleChordPress}
             octaveShift={octaveShift} 
             chordMode={chordMode}
+            selectedKey={selectedKey}
+            keyInfo={keyInfo}
           />
+        </div>
+
+        {/* Circle of Fifths and Key Information */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="space-y-4 lg:col-span-1">
+            <h2 className="text-2xl font-bold text-text-primary flex items-center space-x-2">
+              <Music className="w-6 h-6" />
+              <span>Interactive Circle of Fifths</span>
+            </h2>
+            <CircleOfFifths
+              onKeySelect={handleKeySelect}
+              isSpinning={isCircleSpinning}
+              onToggleSpin={toggleCircleSpin}
+              selectedKey={selectedKey}
+              keyInfo={keyInfo}
+            />
+          </div>
+
+          {/* Key Information */}
+          <div className="space-y-4 lg:col-span-1">
+            <h2 className="text-2xl font-bold text-text-primary">Current Musical Key</h2>
+            <div className="bg-modal-bg-light backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg shadow-shadow-dark">
+              <div className="text-center">
+                <div className="text-4xl font-bold bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent mb-4">
+                  {selectedKey}
+                </div>
+                <p className="text-text-primary/80">
+                  Piano is set to octave {4 + octaveShift} • Volume: {isMuted ? 'Muted' : `${volume}%`} • Mode: {chordMode ? 'Chord' : 'Single Note'}
+                </p>
+              </div>
+            </div>
+            
+            {/* Non-diatonic note warning */}
+            {isNonDiatonic && (
+              <div className="bg-red-600/20 border border-red-500 p-4 rounded-2xl shadow-lg shadow-shadow-dark">
+                <div className="text-center">
+                  <div className="text-red-400 font-bold text-lg mb-2">
+                    ⚠️ Non-Diatonic Note
+                  </div>
+                  <p className="text-red-300 text-sm">
+                    <span className="font-semibold">{lastPressedNote}</span> is not in the {selectedKey} scale
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {/* Chord Information - moved here */}
+            <div className="space-y-4">
+              <ChordInfo selectedKey={selectedKey} lastPressedNote={lastPressedNote} />
+            </div>
+          </div>
         </div>
 
         {/* Beat Machines and Sampler Tabs */}
         <div className="space-y-6">
-          <div className="flex items-center justify-center space-x-4">
+          <div className="flex items-center justify-center space-x-2 md:space-x-4 flex-wrap gap-2">
             <button
               onClick={() => setActiveTab('preset')}
-              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-medium transition-all text-sm md:text-base ${
                 activeTab === 'preset'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+                  ? 'bg-button-primary text-black shadow-lg shadow-shadow-dark'
+                  : 'text-text-primary/70 hover:text-text-primary'
+              } shadow-lg shadow-shadow-dark`}
             >
-              <Disc className="w-5 h-5 inline mr-2" />
+              <Disc className="w-4 h-4 md:w-5 md:h-5 inline mr-1 md:mr-2" />
               Preset Beats
             </button>
             <button
               onClick={() => setActiveTab('custom')}
-              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-medium transition-all text-sm md:text-base ${
                 activeTab === 'custom'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+                  ? 'bg-button-primary text-black shadow-lg shadow-shadow-dark'
+                  : 'text-text-primary/70 hover:text-text-primary'
+              } shadow-lg shadow-shadow-dark`}
             >
-              <Settings className="w-5 h-5 inline mr-2" />
+              <Settings className="w-4 h-4 md:w-5 md:h-5 inline mr-1 md:mr-2" />
               Custom Sequencer
             </button>
             <button
               onClick={() => setActiveTab('sampler')}
-              className={`px-6 py-3 rounded-lg font-medium transition-all ${
+              className={`px-4 md:px-6 py-2 md:py-3 rounded-lg font-medium transition-all text-sm md:text-base ${
                 activeTab === 'sampler'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+                  ? 'bg-button-primary text-black shadow-lg shadow-shadow-dark'
+                  : 'text-text-primary/70 hover:text-text-primary'
+              } shadow-lg shadow-shadow-dark`}
             >
-              <Zap className="w-5 h-5 inline mr-2" />
+              <Zap className="w-4 h-4 md:w-5 md:h-5 inline mr-1 md:mr-2" />
               Sample Pads
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="flex justify-center">
             {/* Beat Machine / Sampler Area */}
-            <div className="space-y-4">
+            <div className="space-y-4 w-full max-w-4xl">
               {activeTab === 'preset' && (
                 <>
-                  <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+                  <h2 className="text-xl md:text-2xl font-bold text-text-primary flex items-center justify-center space-x-2">
                     <Disc className="w-6 h-6" />
-                    <span>8-Pattern Beat Machine</span>
+                    <span>Beat Machine</span>
                   </h2>
                   {audioEngineRef.current && (
                     <BeatMachine audioEngine={audioEngineRef.current} />
@@ -183,7 +254,7 @@ function App() {
               
               {activeTab === 'custom' && (
                 <>
-                  <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+                  <h2 className="text-xl md:text-2xl font-bold text-text-primary flex items-center justify-center space-x-2">
                     <Settings className="w-6 h-6" />
                     <span>Custom Beat Sequencer</span>
                   </h2>
@@ -195,7 +266,7 @@ function App() {
               
               {activeTab === 'sampler' && (
                 <>
-                  <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+                  <h2 className="text-xl md:text-2xl font-bold text-text-primary flex items-center justify-center space-x-2">
                     <Zap className="w-6 h-6" />
                     <span>8-Pad Sampler</span>
                   </h2>
@@ -206,50 +277,10 @@ function App() {
               )}
             </div>
 
-            {/* Circle of Fifths */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
-                <Music className="w-6 h-6" />
-                <span>Interactive Circle of Fifths</span>
-              </h2>
-              <CircleOfFifths
-                onKeySelect={handleKeySelect}
-                isSpinning={isCircleSpinning}
-                onToggleSpin={toggleCircleSpin}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Key Information */}
-        <div className="bg-gradient-to-r from-purple-800/50 to-pink-800/50 backdrop-blur-lg p-6 rounded-2xl border border-white/10">
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-white mb-2">Current Musical Key</h3>
-            <div className="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-              {selectedKey}
-            </div>
-            <p className="text-purple-200 mt-2">
-              Piano is set to octave {4 + octaveShift} • Volume: {isMuted ? 'Muted' : `${volume}%`} • Mode: {chordMode ? 'Chord' : 'Single Note'}
-            </p>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-black/30 backdrop-blur-lg border-t border-white/10 p-4 mt-12">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-purple-200">
-            Professional piano with 49 keys, chord support, custom beat sequencer, sample pads, and interactive music theory tools
-          </p>
-          <div className="flex justify-center items-center space-x-4 mt-2 text-sm text-purple-300">
-            <span>🎹 Real-time audio synthesis</span>
-            <span>🥁 Dynamic beat patterns</span>
-            <span>🎵 Chord playing mode</span>
-            <span>🔊 Custom sample pads</span>
-            <span>🎵 Music theory visualization</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

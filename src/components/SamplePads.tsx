@@ -74,10 +74,10 @@ const SamplePads: React.FC<SamplePadsProps> = ({ audioEngine }) => {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-2xl shadow-2xl border border-gray-700">
+    <div className="bg-modal-bg p-6 rounded-2xl shadow-2xl shadow-shadow-dark border border-gray-700">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-bold text-white">8-Pad Sampler</h3>
-        <div className="text-sm text-gray-400">
+        <h3 className="text-2xl font-bold text-text-primary">8-Pad Sampler</h3>
+        <div className="text-sm text-text-primary/70">
           Use keyboard keys: {keyboardMap.join(', ')}
         </div>
       </div>
@@ -101,31 +101,31 @@ const SamplePads: React.FC<SamplePadsProps> = ({ audioEngine }) => {
               disabled={isLoading[index]}
               className={`w-full h-24 rounded-xl bg-gradient-to-br ${colors[index]} 
                 hover:scale-105 active:scale-95 transition-all duration-150 
-                shadow-lg hover:shadow-xl relative overflow-hidden
+                shadow-lg shadow-shadow-dark hover:shadow-xl relative overflow-hidden
                 ${isLoading[index] ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                ${audioEngine.hasSample(index) ? 'ring-2 ring-white/30' : ''}
+                ${audioEngine.hasSample(index) ? 'ring-2 ring-button-primary/50' : ''}
               `}
             >
               {isLoading[index] ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-button-primary"></div>
                 </div>
               ) : audioEngine.hasSample(index) ? (
                 <div className="flex flex-col items-center justify-center h-full p-2">
-                  <Play className="w-6 h-6 text-white mb-1" />
-                  <div className="text-xs text-white font-medium text-center truncate w-full">
+                  <Play className="w-6 h-6 text-button-primary mb-1" />
+                  <div className="text-xs text-button-primary font-medium text-center truncate w-full">
                     {sampleNames[index]?.replace(/\.[^/.]+$/, "")}
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full">
-                  <Upload className="w-6 h-6 text-white mb-1" />
-                  <div className="text-xs text-white">Upload</div>
+                  <Upload className="w-6 h-6 text-button-primary mb-1" />
+                  <div className="text-xs text-button-primary">Upload</div>
                 </div>
               )}
               
               {/* Keyboard key indicator */}
-              <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 py-0.5 rounded">
+              <div className="absolute top-1 left-1 bg-black/50 text-button-primary text-xs px-1 py-0.5 rounded">
                 {keyboardMap[index]}
               </div>
               
@@ -136,7 +136,7 @@ const SamplePads: React.FC<SamplePadsProps> = ({ audioEngine }) => {
                     e.stopPropagation();
                     removeSample(index);
                   }}
-                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
+                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors shadow-md shadow-shadow-dark"
                 >
                   <X size={12} />
                 </button>
@@ -144,17 +144,18 @@ const SamplePads: React.FC<SamplePadsProps> = ({ audioEngine }) => {
             </button>
             
             <div className="text-center mt-2">
-              <div className="text-white text-sm font-medium">Pad {index + 1}</div>
+              <div className="text-text-primary text-sm font-medium">Pad {index + 1}</div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 p-4 bg-gray-800/50 rounded-lg">
-        <h4 className="text-white font-medium mb-2">Instructions:</h4>
-        <ul className="text-gray-300 text-sm space-y-1">
+      <div className="mt-6 p-4 bg-modal-bg-light rounded-lg shadow-md shadow-shadow-dark">
+        <h4 className="text-text-primary font-medium mb-2">Instructions:</h4>
+        <ul className="text-text-primary/70 text-sm space-y-1">
           <li>• Click empty pads to upload audio samples</li>
-          <li>• Click loaded pads or use keyboard keys (Q-I) to play samples</li>
+          <li className="hidden md:block">• Click loaded pads or use keyboard keys (Q-I) to play samples</li>
+          <li className="md:hidden">• Click loaded pads to play samples</li>
           <li>• Supports WAV, MP3, and other audio formats</li>
           <li>• Use the X button to remove samples</li>
         </ul>

@@ -87,7 +87,7 @@ function App() {
           <h1 className="text-6xl font-bold text-text-primary mb-4 bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent">
           </h1>
           <h1 className="text-6xl font-bold text-text-primary mb-4 bg-gradient-to-r from-text-primary to-white bg-clip-text text-transparent">
-            Piano Master
+            MATILDA for Music Theory!
           </h1>
           <p className="text-xl text-text-primary/80">Loading your musical experience...</p>
           <div className="flex items-center justify-center mt-8 space-x-4">

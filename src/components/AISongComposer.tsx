@@ -190,7 +190,7 @@ Assistant:`;
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <Sparkles className="w-6 h-6 text-accent-yellow" />
-          <h3 className="text-xl md:text-2xl font-bold text-text-primary">AI Song Composer</h3>
+          <h3 className="text-xl md:text-2xl font-bold text-text-primary">Song Composer</h3>
         </div>
         <button
           onClick={() => setShowApiKeyInput(!showApiKeyInput)}

@@ -8,9 +8,10 @@ interface PianoKeyboardProps {
   chordMode: boolean;
   selectedKey: string;
   keyInfo: { [key: string]: KeyInfo };
+  highlightedChord?: string | null;
 }
 
-const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, onChordPress, octaveShift, chordMode, selectedKey, keyInfo }) => {
+const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, onChordPress, octaveShift, chordMode, selectedKey, keyInfo, highlightedChord }) => {
   const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
   
@@ -97,11 +98,29 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, onChordPress,
   // Check if a note should be highlighted based on selected key
   const isNoteHighlighted = (note: string) => {
     if (!selectedKey || !keyInfo[selectedKey]) return false;
-    
+
     const selectedKeyNotes = keyInfo[selectedKey].notes.map(normalizeNote);
     const normalizedNote = normalizeNote(note);
-    
+
     return selectedKeyNotes.includes(normalizedNote);
+  };
+
+  // Check if note is part of the highlighted chord from AI
+  const isPartOfHighlightedChord = (note: string): boolean => {
+    if (!highlightedChord) return false;
+
+    const chordNote = highlightedChord.replace('m', '');
+    const isMinor = highlightedChord.includes('m');
+
+    if (isMinor && minorChords[chordNote]) {
+      return minorChords[chordNote].some(n => normalizeNote(n.note) === normalizeNote(note));
+    }
+
+    if (chords[chordNote]) {
+      return chords[chordNote].some(n => normalizeNote(n.note) === normalizeNote(note));
+    }
+
+    return false;
   };
 
   const handleKeyClick = (key: { note: string; octave: number }) => {
@@ -171,11 +190,14 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, onChordPress,
         {/* White keys */}
         {keys.filter(key => !key.isBlack).map((key, index) => {
           const isHighlighted = isNoteHighlighted(key.note);
+          const isChordHighlighted = isPartOfHighlightedChord(key.note);
           return (
             <button
               key={`${key.note}-${key.octave}-white`}
               className={`absolute border border-gray-300 rounded-b-lg shadow-lg transition-all duration-75 transform hover:scale-y-105 active:scale-y-95 ${
-                isHighlighted
+                isChordHighlighted
+                  ? 'bg-gradient-to-b from-accent-yellow to-accent-orange hover:from-accent-yellow/80 hover:to-accent-orange/80 active:from-accent-orange active:to-accent-orange/90 ring-4 ring-accent-yellow/50'
+                  : isHighlighted
                   ? 'bg-gradient-to-b from-highlight-green-light to-highlight-green-dark hover:from-highlight-green-light/80 hover:to-highlight-green-dark/80 active:from-highlight-green-dark active:to-highlight-green-dark/90'
                   : chordMode && (chords[key.note] || minorChords[key.note])
                   ? 'bg-gradient-to-b from-chord-highlight-light to-chord-highlight-dark hover:from-chord-highlight-light/80 hover:to-chord-highlight-dark/80 active:from-chord-highlight-dark active:to-chord-highlight-dark/90'
@@ -203,11 +225,14 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({ onKeyPress, onChordPress,
         {keys.filter(key => key.isBlack).map((key) => {
           const whiteKeyIndex = keys.filter(k => !k.isBlack && k.position < key.position).length;
           const isHighlighted = isNoteHighlighted(key.note);
+          const isChordHighlighted = isPartOfHighlightedChord(key.note);
           return (
             <button
               key={`${key.note}-${key.octave}-black`}
               className={`absolute rounded-b-lg shadow-xl transition-all duration-75 transform hover:scale-y-105 active:scale-y-95 ${
-                isHighlighted
+                isChordHighlighted
+                  ? 'bg-gradient-to-b from-accent-orange to-accent-yellow hover:from-accent-orange/80 hover:to-accent-yellow/80 active:from-accent-yellow active:to-accent-yellow/90 ring-4 ring-accent-orange/50'
+                  : isHighlighted
                   ? 'bg-gradient-to-b from-highlight-green-dark to-highlight-green-dark/80 hover:from-highlight-green-dark/80 hover:to-highlight-green-dark/60 active:from-highlight-green-dark active:to-highlight-green-dark'
                   : chordMode && (chords[key.note] || minorChords[key.note])
                   ? 'bg-gradient-to-b from-chord-highlight-dark to-chord-highlight-dark/80 hover:from-chord-highlight-dark/80 hover:to-chord-highlight-dark/60 active:from-chord-highlight-dark active:to-chord-highlight-dark'

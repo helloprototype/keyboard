@@ -7,8 +7,16 @@ import CustomBeatMachine from './components/CustomBeatMachine';
 import CircleOfFifths from './components/CircleOfFifths';
 import Controls from './components/Controls';
 import ChordInfo from './components/ChordInfo';
+import AISongComposer from './components/AISongComposer';
 import { AudioEngine } from './utils/audioUtils';
 import { keyInfo, isNoteDiatonic } from './utils/musicTheoryUtils';
+
+interface ChordProgression {
+  chords: string[];
+  timeSignature: string;
+  tempo: number;
+  mood: string;
+}
 
 function App() {
   const [octaveShift, setOctaveShift] = useState(0);
@@ -21,8 +29,13 @@ function App() {
   const [activeTab, setActiveTab] = useState<'preset' | 'custom' | 'sampler'>('preset');
   const [lastPressedNote, setLastPressedNote] = useState<string>('');
   const [contentReady, setContentReady] = useState(false);
-  
+  const [isPlayingProgression, setIsPlayingProgression] = useState(false);
+  const [currentProgressionIndex, setCurrentProgressionIndex] = useState(0);
+  const [activeProgression, setActiveProgression] = useState<ChordProgression | null>(null);
+  const [highlightedChord, setHighlightedChord] = useState<string | null>(null);
+
   const audioEngineRef = useRef<AudioEngine | null>(null);
+  const progressionIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     audioEngineRef.current = new AudioEngine();
@@ -76,6 +89,102 @@ function App() {
   const toggleChordMode = () => {
     setChordMode(!chordMode);
   };
+
+  const getChordNotes = (chordName: string): Array<{note: string, octave: number}> => {
+    const baseOctave = 4 + octaveShift;
+    const chordNote = chordName.replace('m', '');
+    const isMinor = chordName.includes('m');
+
+    const majorChords: { [key: string]: Array<{note: string, octave: number}> } = {
+      'C': [{note: 'C', octave: baseOctave}, {note: 'E', octave: baseOctave}, {note: 'G', octave: baseOctave}],
+      'C#': [{note: 'C#', octave: baseOctave}, {note: 'F', octave: baseOctave}, {note: 'G#', octave: baseOctave}],
+      'D': [{note: 'D', octave: baseOctave}, {note: 'F#', octave: baseOctave}, {note: 'A', octave: baseOctave}],
+      'D#': [{note: 'D#', octave: baseOctave}, {note: 'G', octave: baseOctave}, {note: 'A#', octave: baseOctave}],
+      'E': [{note: 'E', octave: baseOctave}, {note: 'G#', octave: baseOctave}, {note: 'B', octave: baseOctave}],
+      'F': [{note: 'F', octave: baseOctave}, {note: 'A', octave: baseOctave}, {note: 'C', octave: baseOctave + 1}],
+      'F#': [{note: 'F#', octave: baseOctave}, {note: 'A#', octave: baseOctave}, {note: 'C#', octave: baseOctave + 1}],
+      'G': [{note: 'G', octave: baseOctave}, {note: 'B', octave: baseOctave}, {note: 'D', octave: baseOctave + 1}],
+      'G#': [{note: 'G#', octave: baseOctave}, {note: 'C', octave: baseOctave + 1}, {note: 'D#', octave: baseOctave + 1}],
+      'A': [{note: 'A', octave: baseOctave}, {note: 'C#', octave: baseOctave + 1}, {note: 'E', octave: baseOctave + 1}],
+      'A#': [{note: 'A#', octave: baseOctave}, {note: 'D', octave: baseOctave + 1}, {note: 'F', octave: baseOctave + 1}],
+      'B': [{note: 'B', octave: baseOctave}, {note: 'D#', octave: baseOctave + 1}, {note: 'F#', octave: baseOctave + 1}],
+    };
+
+    const minorChords: { [key: string]: Array<{note: string, octave: number}> } = {
+      'C': [{note: 'C', octave: baseOctave}, {note: 'D#', octave: baseOctave}, {note: 'G', octave: baseOctave}],
+      'C#': [{note: 'C#', octave: baseOctave}, {note: 'E', octave: baseOctave}, {note: 'G#', octave: baseOctave}],
+      'D': [{note: 'D', octave: baseOctave}, {note: 'F', octave: baseOctave}, {note: 'A', octave: baseOctave}],
+      'D#': [{note: 'D#', octave: baseOctave}, {note: 'F#', octave: baseOctave}, {note: 'A#', octave: baseOctave}],
+      'E': [{note: 'E', octave: baseOctave}, {note: 'G', octave: baseOctave}, {note: 'B', octave: baseOctave}],
+      'F': [{note: 'F', octave: baseOctave}, {note: 'G#', octave: baseOctave}, {note: 'C', octave: baseOctave + 1}],
+      'F#': [{note: 'F#', octave: baseOctave}, {note: 'A', octave: baseOctave}, {note: 'C#', octave: baseOctave + 1}],
+      'G': [{note: 'G', octave: baseOctave}, {note: 'A#', octave: baseOctave}, {note: 'D', octave: baseOctave + 1}],
+      'G#': [{note: 'G#', octave: baseOctave}, {note: 'B', octave: baseOctave}, {note: 'D#', octave: baseOctave + 1}],
+      'A': [{note: 'A', octave: baseOctave}, {note: 'C', octave: baseOctave + 1}, {note: 'E', octave: baseOctave + 1}],
+      'A#': [{note: 'A#', octave: baseOctave}, {note: 'C#', octave: baseOctave + 1}, {note: 'F', octave: baseOctave + 1}],
+      'B': [{note: 'B', octave: baseOctave}, {note: 'D', octave: baseOctave + 1}, {note: 'F#', octave: baseOctave + 1}],
+    };
+
+    if (isMinor && minorChords[chordNote]) {
+      return minorChords[chordNote];
+    }
+
+    return majorChords[chordNote] || [];
+  };
+
+  const handlePlayProgression = (progression: ChordProgression) => {
+    if (progressionIntervalRef.current) {
+      clearInterval(progressionIntervalRef.current);
+    }
+
+    setActiveProgression(progression);
+    setIsPlayingProgression(true);
+    setCurrentProgressionIndex(0);
+
+    const beatsPerMeasure = parseInt(progression.timeSignature.split('/')[0]);
+    const chordDuration = (60000 / progression.tempo) * beatsPerMeasure;
+
+    let index = 0;
+
+    const playChord = () => {
+      if (index >= progression.chords.length) {
+        index = 0;
+      }
+
+      const chordName = progression.chords[index];
+      const chordNotes = getChordNotes(chordName);
+
+      if (audioEngineRef.current && !isMuted && chordNotes.length > 0) {
+        audioEngineRef.current.playChord(chordNotes);
+        setHighlightedChord(chordName);
+        setLastPressedNote(chordNotes[0].note);
+      }
+
+      setCurrentProgressionIndex(index);
+      index++;
+    };
+
+    playChord();
+    progressionIntervalRef.current = setInterval(playChord, chordDuration);
+  };
+
+  const handleStopProgression = () => {
+    if (progressionIntervalRef.current) {
+      clearInterval(progressionIntervalRef.current);
+      progressionIntervalRef.current = null;
+    }
+    setIsPlayingProgression(false);
+    setHighlightedChord(null);
+    setActiveProgression(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (progressionIntervalRef.current) {
+        clearInterval(progressionIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Check if the last pressed note is diatonic to the selected key
   const isNonDiatonic = lastPressedNote && selectedKey && !isNoteDiatonic(lastPressedNote, selectedKey);
@@ -138,15 +247,23 @@ function App() {
             <span className="hidden md:inline">25-Key Piano</span>
             <span className="md:hidden">Piano</span>
           </h2>
-          <PianoKeyboard 
-            onKeyPress={handleKeyPress} 
+          <PianoKeyboard
+            onKeyPress={handleKeyPress}
             onChordPress={handleChordPress}
-            octaveShift={octaveShift} 
+            octaveShift={octaveShift}
             chordMode={chordMode}
             selectedKey={selectedKey}
             keyInfo={keyInfo}
+            highlightedChord={highlightedChord}
           />
         </div>
+
+        {/* AI Song Composer */}
+        <AISongComposer
+          onPlayProgression={handlePlayProgression}
+          onStopProgression={handleStopProgression}
+          isPlaying={isPlayingProgression}
+        />
 
         {/* Circle of Fifths and Key Information */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
